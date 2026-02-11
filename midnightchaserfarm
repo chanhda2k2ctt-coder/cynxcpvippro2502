@@ -1,6 +1,7 @@
 --[[
 	MIDNIGHT CHASER FARM - EXTREME PERFORMANCE & SPEED EDITION
 	Optimized by Antigravity
+	UI Design: Modern Dark Glassmorphism 2026
 ]]
 
 local Players = game:GetService("Players")
@@ -11,18 +12,277 @@ local VirtualUser = game:GetService("VirtualUser")
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
 
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- Cấu hình mặc định (Tốc độ cao)
+-- [UI LIBRARY EMBEDDED] --
+local Library = {}
+
+function Library:CreateWindow(Config)
+	local Title = Config.text or "Cynx Hub"
+	
+	-- Cleanup Old UI
+	for _, v in pairs(CoreGui:GetChildren()) do
+		if v.Name:match("^CynxUI_") then v:Destroy() end
+	end
+	
+	local ScreenGui = Instance.new("ScreenGui")
+	ScreenGui.Name = "CynxUI_" .. math.random(1, 10000)
+	ScreenGui.Parent = CoreGui
+	ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+	local MainFrame = Instance.new("Frame")
+	MainFrame.Name = "MainFrame"
+	MainFrame.Parent = ScreenGui
+	MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+	MainFrame.BorderSizePixel = 0
+	MainFrame.Position = UDim2.new(0.5, -225, 0.5, -175)
+	MainFrame.Size = UDim2.new(0, 450, 0, 350)
+	MainFrame.ClipsDescendants = true
+
+	local UICorner = Instance.new("UICorner")
+	UICorner.CornerRadius = UDim.new(0, 10)
+	UICorner.Parent = MainFrame
+
+	-- Glow Effect
+	local Shadow = Instance.new("ImageLabel")
+	Shadow.Name = "Shadow"
+	Shadow.Parent = MainFrame
+	Shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+	Shadow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	Shadow.BackgroundTransparency = 1.000
+	Shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
+	Shadow.Size = UDim2.new(1, 40, 1, 40)
+	Shadow.ZIndex = 0
+	Shadow.Image = "rbxassetid://6015897843"
+	Shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+	Shadow.ImageTransparency = 0.5
+	Shadow.SliceCenter = Rect.new(49, 49, 450, 450)
+	Shadow.ScaleType = Enum.ScaleType.Slice
+
+	-- Top Bar
+	local TopBar = Instance.new("Frame")
+	TopBar.Name = "TopBar"
+	TopBar.Parent = MainFrame
+	TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+	TopBar.BorderSizePixel = 0
+	TopBar.Size = UDim2.new(1, 0, 0, 40)
+
+	local TopBarCorner = Instance.new("UICorner")
+	TopBarCorner.CornerRadius = UDim.new(0, 10)
+	TopBarCorner.Parent = TopBar
+	
+	local FixPatch = Instance.new("Frame")
+	FixPatch.BorderSizePixel = 0
+	FixPatch.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+	FixPatch.Size = UDim2.new(1, 0, 0, 10)
+	FixPatch.Position = UDim2.new(0, 0, 1, -10)
+	FixPatch.Parent = TopBar
+
+	local TitleLabel = Instance.new("TextLabel")
+	TitleLabel.Parent = TopBar
+	TitleLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	TitleLabel.BackgroundTransparency = 1.000
+	TitleLabel.Position = UDim2.new(0, 15, 0, 0)
+	TitleLabel.Size = UDim2.new(0, 200, 1, 0)
+	TitleLabel.Font = Enum.Font.GothamBold
+	TitleLabel.Text = Title
+	TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	TitleLabel.TextSize = 16.000
+	TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+    local Gradient = Instance.new("UIGradient")
+    Gradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 100, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(100, 200, 255))
+    }
+    Gradient.Parent = TitleLabel
+
+	-- Close Button
+	local CloseBtn = Instance.new("TextButton")
+	CloseBtn.Parent = TopBar
+	CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	CloseBtn.BackgroundTransparency = 1.000
+	CloseBtn.Position = UDim2.new(1, -35, 0, 5)
+	CloseBtn.Size = UDim2.new(0, 30, 0, 30)
+	CloseBtn.Font = Enum.Font.GothamBold
+	CloseBtn.Text = "X"
+	CloseBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
+	CloseBtn.TextSize = 14.000
+	CloseBtn.MouseButton1Click:Connect(function() ScreenGui:Destroy() end)
+	
+	-- Draggable
+	local Dragging, DragInput, DragStart, StartPosition
+	TopBar.InputBegan:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseButton1 then
+			Dragging, DragStart, StartPosition = true, input.Position, MainFrame.Position
+		end
+	end)
+	TopBar.InputChanged:Connect(function(input)
+		if input.UserInputType == Enum.UserInputType.MouseMovement then DragInput = input end
+	end)
+	UserInputService.InputChanged:Connect(function(input)
+		if input == DragInput and Dragging then
+			local d = input.Position - DragStart
+			MainFrame.Position = UDim2.new(StartPosition.X.Scale, StartPosition.X.Offset + d.X, StartPosition.Y.Scale, StartPosition.Y.Offset + d.Y)
+		end
+	end)
+
+	-- Container
+	local Container = Instance.new("ScrollingFrame")
+	Container.Name = "Container"
+	Container.Parent = MainFrame
+	Container.Active = true
+	Container.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	Container.BackgroundTransparency = 1.000
+	Container.BorderSizePixel = 0
+	Container.Position = UDim2.new(0, 10, 0, 50)
+	Container.Size = UDim2.new(1, -20, 1, -60)
+	Container.ScrollBarThickness = 2
+	Container.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 255)
+
+	local UIListLayout = Instance.new("UIListLayout")
+	UIListLayout.Parent = Container
+	UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	UIListLayout.Padding = UDim.new(0, 8)
+
+	local WindowFunctions = {}
+
+	function WindowFunctions:AddButton(Text, Callback)
+		local ButtonFrame = Instance.new("Frame")
+		ButtonFrame.Parent = Container
+		ButtonFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+		ButtonFrame.Size = UDim2.new(1, 0, 0, 40)
+		Instance.new("UICorner", ButtonFrame).CornerRadius = UDim.new(0, 6)
+
+		local Btn = Instance.new("TextButton")
+		Btn.Parent = ButtonFrame
+		Btn.BackgroundTransparency = 1
+		Btn.Size = UDim2.new(1,0,1,0)
+		Btn.Font = Enum.Font.GothamSemibold
+		Btn.Text = Text
+		Btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+		Btn.TextSize = 14
+		
+		Btn.MouseEnter:Connect(function() TweenService:Create(ButtonFrame, TweenInfo.new(0.2), {BackgroundColor3=Color3.fromRGB(45,45,50)}):Play() end)
+		Btn.MouseLeave:Connect(function() TweenService:Create(ButtonFrame, TweenInfo.new(0.2), {BackgroundColor3=Color3.fromRGB(35,35,40)}):Play() end)
+		Btn.MouseButton1Click:Connect(function() if Callback then Callback() end end)
+	end
+	
+	function WindowFunctions:AddToggle(Text, Callback)
+		local Toggled = false
+		local ToggleFrame = Instance.new("Frame")
+		ToggleFrame.Parent = Container
+		ToggleFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+		ToggleFrame.Size = UDim2.new(1,0,0,40)
+		Instance.new("UICorner", ToggleFrame).CornerRadius = UDim.new(0, 6)
+
+		local Label = Instance.new("TextLabel")
+		Label.Parent = ToggleFrame
+		Label.BackgroundTransparency = 1
+		Label.Position = UDim2.new(0,15,0,0)
+		Label.Size = UDim2.new(0,200,1,0)
+		Label.Font = Enum.Font.GothamSemibold
+		Label.Text = Text
+		Label.TextColor3 = Color3.fromRGB(255,255,255)
+		Label.TextSize = 14
+		Label.TextXAlignment = Enum.TextXAlignment.Left
+
+		local ToggleBtn = Instance.new("TextButton")
+		ToggleBtn.Parent = ToggleFrame
+		ToggleBtn.BackgroundTransparency = 1
+		ToggleBtn.Size = UDim2.new(1,0,1,0)
+		ToggleBtn.Text = ""
+
+		local Switch = Instance.new("Frame")
+		Switch.Parent = ToggleFrame
+		Switch.BackgroundColor3 = Color3.fromRGB(60,60,65)
+		Switch.Position = UDim2.new(1,-55,0.5,-10)
+		Switch.Size = UDim2.new(0,40,0,20)
+		Instance.new("UICorner", Switch).CornerRadius = UDim.new(1,0)
+
+		local Circle = Instance.new("Frame")
+		Circle.Parent = Switch
+		Circle.BackgroundColor3 = Color3.fromRGB(255,255,255)
+		Circle.Position = UDim2.new(0,2,0.5,-8)
+		Circle.Size = UDim2.new(0,16,0,16)
+		Instance.new("UICorner", Circle).CornerRadius = UDim.new(1,0)
+
+		ToggleBtn.MouseButton1Click:Connect(function()
+			Toggled = not Toggled
+			local TargetColor = Toggled and Color3.fromRGB(100,200,255) or Color3.fromRGB(60,60,65)
+			local TargetPos = Toggled and UDim2.new(1,-18,0.5,-8) or UDim2.new(0,2,0.5,-8)
+			TweenService:Create(Switch, TweenInfo.new(0.2), {BackgroundColor3=TargetColor}):Play()
+			TweenService:Create(Circle, TweenInfo.new(0.2), {Position=TargetPos}):Play()
+			if Callback then Callback(Toggled) end
+		end)
+	end
+
+	function WindowFunctions:AddBox(Text, Callback)
+		local BoxFrame = Instance.new("Frame")
+		BoxFrame.Parent = Container
+		BoxFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+		BoxFrame.Size = UDim2.new(1,0,0,40)
+		Instance.new("UICorner", BoxFrame).CornerRadius = UDim.new(0, 6)
+
+		local Label = Instance.new("TextLabel")
+		Label.Parent = BoxFrame
+		Label.BackgroundTransparency = 1
+		Label.Position = UDim2.new(0,15,0,0)
+		Label.Size = UDim2.new(0,150,1,0)
+		Label.Font = Enum.Font.GothamSemibold
+		Label.Text = Text
+		Label.TextColor3 = Color3.fromRGB(255,255,255)
+		Label.TextSize = 14
+		Label.TextXAlignment = Enum.TextXAlignment.Left
+
+		local TextBox = Instance.new("TextBox")
+		TextBox.Parent = BoxFrame
+		TextBox.BackgroundColor3 = Color3.fromRGB(25,25,30)
+		TextBox.Position = UDim2.new(1,-110,0.5,-12)
+		TextBox.Size = UDim2.new(0,100,0,24)
+		TextBox.Font = Enum.Font.Gotham
+		TextBox.PlaceholderText = "#"
+		TextBox.Text = ""
+		TextBox.TextColor3 = Color3.fromRGB(255,255,255)
+		TextBox.TextSize = 13
+		Instance.new("UICorner", TextBox).CornerRadius = UDim.new(0, 4)
+
+		TextBox.FocusLost:Connect(function(enter)
+			if Callback then Callback(TextBox, enter) end
+		end)
+	end
+	
+	function WindowFunctions:AddLabel(Text)
+		local LabelFrame = Instance.new("Frame")
+		LabelFrame.Parent = Container
+		LabelFrame.BackgroundTransparency = 1
+		LabelFrame.Size = UDim2.new(1,0,0,25)
+		
+		local Label = Instance.new("TextLabel")
+		Label.Parent = LabelFrame
+		Label.BackgroundTransparency = 1
+		Label.Size = UDim2.new(1,0,1,0)
+		Label.Font = Enum.Font.GothamBold
+		Label.Text = Text
+		Label.TextColor3 = Color3.fromRGB(150,150,150)
+		Label.TextSize = 12
+	end
+
+	return WindowFunctions
+end
+-- [END UI LIBRARY] --
+
+-- Cấu hình mặc định
 local Config = {
-	Speed = 350, -- Tốc độ cực cao (Cẩn thận rollback)
-	TweenTime = 0, -- Tự động tính toán
+	Speed = 350,
+	TweenTime = 0,
 	AutoFarm = false,
 	AutoDeliver = false,
 	FPSBoost = true,
-	WhiteScreen = false, -- Màn hình trắng để tiết kiệm GPU
+	WhiteScreen = false,
 }
 
 local State = {
@@ -32,53 +292,35 @@ local State = {
 	CurrentTween = nil
 }
 
--- [HỆ THỐNG TỐI ƯU HÓA FPS CỰC ĐOAN]
+-- [FPS BOOST SYSTEM]
 local function SuperFPSBoost()
-	-- 1. Giảm Setting
 	settings().Rendering.QualityLevel = 1
 	settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
-	
-	-- 2. Tắt Lighting
 	Lighting.GlobalShadows = false
 	Lighting.FogEnd = 9e9
 	Lighting.Brightness = 0
-	Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
 	
 	for _, v in pairs(Lighting:GetChildren()) do
-		if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") then
-			v:Destroy()
-		end
+		if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") then v:Destroy() end
 	end
-
-	-- 3. Xóa Texture & Decals & Effects
+	
 	local function clearVisuals()
 		for _, v in pairs(Workspace:GetDescendants()) do
-			if v:IsA("Decal") or v:IsA("Texture") or v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Explosion") or v:IsA("Sparkles") then
+			if v:IsA("Decal") or v:IsA("Texture") or v:IsA("ParticleEmitter") or v:IsA("Trail") then
 				v:Destroy()
 			elseif v:IsA("MeshPart") then
-				-- Giữ lại hình dáng nhưng bỏ texture
 				v.RenderFidelity = Enum.RenderFidelity.Precise
 				v.Material = Enum.Material.Plastic
 				v.Reflectance = 0
 			end
 		end
 	end
-	
 	clearVisuals()
-	Workspace.DescendantAdded:Connect(function(v)
-		if v:IsA("Decal") or v:IsA("Texture") or v:IsA("ParticleEmitter") then
-			task.wait()
-			v:Destroy()
-		end
-	end)
 	
-	-- 4. Ẩn 3D Rendering (Optional: 3D Rendering Disable)
-	if Config.WhiteScreen then
-		RunService:Set3dRenderingEnabled(false)
-	end
+	if Config.WhiteScreen then RunService:Set3dRenderingEnabled(false) end
 end
 
--- [HỆ THỐNG ANTI-AFK]
+-- [ANTI AFK]
 if not getgenv().AntiAfkLoaded then
 	getgenv().AntiAfkLoaded = true
 	local vu = game:GetService("VirtualUser")
@@ -89,7 +331,7 @@ if not getgenv().AntiAfkLoaded then
 	end)
 end
 
--- [HỆ THỐNG FARM]
+-- [LOGIC FARM]
 local function createGround()
 	if not State.GroundPart or not State.GroundPart.Parent then
 		local p = Instance.new("Part")
@@ -98,7 +340,7 @@ local function createGround()
 		p.Anchored = true
 		p.Transparency = 1 
 		p.CanCollide = true
-		p.Position = Vector3.new(0, -400, 0) -- Giấu dưới map
+		p.Position = Vector3.new(0, -400, 0)
 		p.Parent = Workspace
 		State.GroundPart = p
 	end
@@ -109,106 +351,58 @@ local function GetCar()
 	if not char then return nil end
 	local hum = char:FindFirstChild("Humanoid")
 	if not hum or not hum.SeatPart then return nil end
-	
-	local vehicle = hum.SeatPart.Parent
-	if vehicle:IsA("Model") then
-		return vehicle
-	end
-	return nil
-end
-
-local function BypassVelocity(rootPart)
-	-- Giữ vận tốc ổn định để tránh bị server kéo lại
-	if rootPart then
-		rootPart.AssemblyLinearVelocity = Vector3.zero 
-		rootPart.AssemblyAngularVelocity = Vector3.zero
-	end
+	return hum.SeatPart.Parent
 end
 
 local function TweenTo(targetPos, speedOverride)
 	local car = GetCar()
 	if not car or not car.PrimaryPart then return end
-
-	local root = car.PrimaryPart
-	-- Nếu có bộ phận #Weight thì dùng nó làm gốc (game mechanic)
-	if car.Body:FindFirstChild("#Weight") then
-		root = car.Body["#Weight"]
-		car.PrimaryPart = root
-	end
+	local root = car.Body:FindFirstChild("#Weight") or car.PrimaryPart
+	car.PrimaryPart = root
 	
 	createGround()
-	
-	-- Tính toán vị trí đích
-	local targetCFrame
-	if typeof(targetPos) == "CFrame" then
-		targetCFrame = targetPos
-	else
-		targetCFrame = CFrame.new(targetPos)
-	end
-	
-	-- Tính toán thời gian & tốc độ
+	local targetCFrame = (typeof(targetPos) == "CFrame") and targetPos or CFrame.new(targetPos)
 	local speed = speedOverride or Config.Speed
 	local dist = (root.Position - targetCFrame.Position).Magnitude
 	local time = dist / speed
 	
-	-- Chia nhỏ Tween để xử lý event (nếu cần) hoặc chạy một mạch
-	local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
-	
-	-- Mô phỏng đường đi
 	local cframeValue = Instance.new("CFrameValue")
 	cframeValue.Value = root.CFrame
 	
-	local stepConnection
-	stepConnection = cframeValue.Changed:Connect(function(val)
-		if not car or not car.Parent or not State.GroundPart then
-			stepConnection:Disconnect()
-			return
-		end
-		
-		-- Di chuyển Ground theo xe để luôn có đường chạy -> Không bao giờ rớt map
-		State.GroundPart.Position = Vector3.new(val.X, val.Y - 10, val.Z) -- Ground sát dưới xe
-		
-		-- Teleport xe
+	local connection
+	connection = cframeValue.Changed:Connect(function(val)
+		if not car or not car.Parent then connection:Disconnect() return end
+		State.GroundPart.Position = Vector3.new(val.X, val.Y - 10, val.Z)
 		car:PivotTo(val)
-		
-		-- Bypass Physics
-		BypassVelocity(root)
+		root.AssemblyLinearVelocity = Vector3.zero 
 	end)
 	
-	local tween = TweenService:Create(cframeValue, tweenInfo, {Value = targetCFrame})
+	local tween = TweenService:Create(cframeValue, TweenInfo.new(time, Enum.EasingStyle.Linear), {Value = targetCFrame})
 	State.CurrentTween = tween
 	tween:Play()
 	tween.Completed:Wait()
 	
-	if stepConnection then stepConnection:Disconnect() end
+	if connection then connection:Disconnect() end
 	cframeValue:Destroy()
 end
 
--- [QUẢN LÝ OBJECTS - GIẢM LAG]
 State.BackupFolder = ReplicatedStorage:FindFirstChild("LagReduction") or Instance.new("Folder", ReplicatedStorage)
 State.BackupFolder.Name = "LagReduction"
 
 local function ClearMap()
-	-- Dọn sạch map để chạy cho nhanh
 	for _, v in pairs(Workspace:GetChildren()) do
-		if v:IsA("Model") and v ~= LocalPlayer.Character and v ~= State.Car and v.Name ~= "Speedway" then
-			-- Giữ lại các điểm giao hàng nếu cần thiết
-			if not v:FindFirstChild("Highlight") and v.Name ~= "GiftPickup" then 
-				v.Parent = State.BackupFolder
-			end
+		if v:IsA("Model") and v ~= LocalPlayer.Character and v ~= State.Car and v.Name ~= "Speedway" and not v:FindFirstChild("Highlight") and v.Name ~= "GiftPickup" then
+			v.Parent = State.BackupFolder
 		end
 	end
 end
 
 local function RestoreMap()
-	for _, v in pairs(State.BackupFolder:GetChildren()) do
-		v.Parent = Workspace
-	end
+	for _, v in pairs(State.BackupFolder:GetChildren()) do v.Parent = Workspace end
 end
 
--- [GIAO DIỆN UI]
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/chanhda2k2ctt-coder/cynxcpvippro2502/main/ui.lua", true))()
-local Window = library:CreateWindow({text = "Midnight Farm SUPER FAST"})
+-- [INITIALIZE UI]
+local Window = Library:CreateWindow({text = "Midnight Farm SUPER FAST"})
 
 Window:AddToggle("Auto Farm (Quest)", function(state)
 	Config.AutoFarm = state
@@ -217,25 +411,18 @@ Window:AddToggle("Auto Farm (Quest)", function(state)
 		createGround()
 		task.spawn(function()
 			while Config.AutoFarm do
-				local car = GetCar()
-				if car then
-					-- Danh sách điểm farm cố định (đã tối ưu thứ tự)
+				if GetCar() then
 					local points = {
-						Vector3.new(105, -26, 7965),
-						Vector3.new(2751, -26, 3694),
-						Vector3.new(-6408, -26, -727),
-						Vector3.new(-8821, -26, 2042),
+						Vector3.new(105, -26, 7965), Vector3.new(2751, -26, 3694),
+						Vector3.new(-6408, -26, -727), Vector3.new(-8821, -26, 2042),
 						Vector3.new(4887, -26, 1222)
 					}
-					
 					for _, p in ipairs(points) do
 						if not Config.AutoFarm then break end
-						TweenTo(CFrame.new(p + Vector3.new(0, 10, 0)))
+						TweenTo(p + Vector3.new(0, 10, 0))
 					end
-				else
-					-- Tự động nhảy lên ghế lái nếu đứng gần (Optional)
 				end
-				task.wait()
+				task.wait(1)
 			end
 		end)
 	else
@@ -253,41 +440,19 @@ Window:AddToggle("Auto Deliver (Event)", function(state)
 			while Config.AutoDeliver do
 				local car = GetCar()
 				if car then
-					-- Logic nhận diện quà và điểm giao
-					local hasGifts = false 
-					-- Check logic quà (giả lập logic cũ nhưng nhanh hơn)
-					-- Ở đây ta ưu tiên chạy đến điểm vàng (Highlight)
-					
-					local target = nil
-					local minDist = math.huge
-					
-					-- Tìm điểm giao hàng
+					local target, minDist = nil, math.huge
 					for _, v in pairs(Workspace:GetChildren()) do
 						if v.Name == "" and v:FindFirstChild("Highlight") then
 							local d = (car.PrimaryPart.Position - v.WorldPivot.Position).Magnitude
-							if d < minDist then
-								minDist = d
-								target = v
-							end
+							if d < minDist then minDist = d; target = v end
 						end
 					end
 					
 					if target then
-						-- Chạy đến điểm giao
-						TweenTo(target.WorldPivot * CFrame.new(0, 5, 0), Config.Speed)
-					else
-						-- Không có điểm giao -> Đi lấy quà
-						if Workspace:FindFirstChild("GiftPickup") then
-							TweenTo(Workspace.GiftPickup.WorldPivot * CFrame.new(0, 5, 0), Config.Speed)
-							-- Đợi lấy quà (spam check)
-							local sTime = tick()
-							repeat 
-								task.wait()
-								if car.PrimaryPart then
-									car.PrimaryPart.AssemblyLinearVelocity = Vector3.zero
-								end
-							until tick() - sTime > 1.5 -- Đứng yên 1.5s để lấy quà
-						end
+						TweenTo(target.WorldPivot.Position + Vector3.new(0, 5, 0))
+					elseif Workspace:FindFirstChild("GiftPickup") then
+						TweenTo(Workspace.GiftPickup.WorldPivot.Position + Vector3.new(0, 5, 0))
+						task.wait(1.5)
 					end
 				end
 				task.wait()
@@ -299,28 +464,12 @@ Window:AddToggle("Auto Deliver (Event)", function(state)
 	end
 end)
 
--- Tab Settings
 Window:AddLabel("--- SETTINGS ---")
-Window:AddBox("Speed (Max: 400)", function(obj, focus)
-	if focus then
-		local s = tonumber(obj.Text)
-		if s then Config.Speed = s end
-	end
-end)
-
-Window:AddButton("Activte FPS BOOST", function()
-	SuperFPSBoost()
-end)
-
+Window:AddBox("Speed (Max: 400)", function(obj) Config.Speed = tonumber(obj.Text) or 350 end)
+Window:AddButton("Activate FPS BOOST", function() SuperFPSBoost() end)
 Window:AddToggle("White Screen (Save GPU)", function(state)
 	Config.WhiteScreen = state
-	if state then
-		RunService:Set3dRenderingEnabled(false)
-	else
-		RunService:Set3dRenderingEnabled(true)
-	end
+	RunService:Set3dRenderingEnabled(not state)
 end)
 
--- Auto Init
-SuperFPSBoost()
-warn("Loaded Extreme Speed Script")
+work("Loaded Extreme Speed Script with Modern UI")
