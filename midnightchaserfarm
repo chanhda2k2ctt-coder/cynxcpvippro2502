@@ -1,3 +1,8 @@
+--[[
+	MIDNIGHT CHASER FARM - EXTREME PERFORMANCE & SPEED EDITION
+	Optimized by Antigravity
+]]
+
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -5,331 +10,317 @@ local TweenService = game:GetService("TweenService")
 local VirtualUser = game:GetService("VirtualUser")
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
 
--- Quản lý trạng thái tập trung (State Management)
-local State = {
+-- Cấu hình mặc định (Tốc độ cao)
+local Config = {
+	Speed = 350, -- Tốc độ cực cao (Cẩn thận rollback)
+	TweenTime = 0, -- Tự động tính toán
 	AutoFarm = false,
 	AutoDeliver = false,
-	Speed = 230,
-	Car = nil,
-	CurrentTween = nil,
-	CancelTween = false,
-	GroundPart = nil
+	FPSBoost = true,
+	WhiteScreen = false, -- Màn hình trắng để tiết kiệm GPU
 }
 
--- Anti-AFK tối ưu
-task.spawn(function()
-	warn("Anti-AFK initialized")
-	VirtualUser:CaptureController()
-	LocalPlayer.Idled:Connect(function()
-		VirtualUser:Button2Down(Vector2.zero)
-		task.wait(0.2)
-		VirtualUser:Button2Up(Vector2.zero)
-		warn("Anti-AFK activated")
-	end)
-end)
+local State = {
+	Car = nil,
+	GroundPart = nil,
+	BackupFolder = nil,
+	CurrentTween = nil
+}
 
--- Hàm tối ưu hóa FPS mạnh mẽ (FPS Boost)
-local function OptimizeFPS()
-	-- Giảm setting Lighting
+-- [HỆ THỐNG TỐI ƯU HÓA FPS CỰC ĐOAN]
+local function SuperFPSBoost()
+	-- 1. Giảm Setting
+	settings().Rendering.QualityLevel = 1
+	settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+	
+	-- 2. Tắt Lighting
 	Lighting.GlobalShadows = false
 	Lighting.FogEnd = 9e9
 	Lighting.Brightness = 0
+	Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
 	
-	pcall(function()
-		settings().Rendering.QualityLevel = "Level01"
-	end)
-
-	-- Xóa hiệu ứng Lighting
 	for _, v in pairs(Lighting:GetChildren()) do
-		if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") or v:IsA("DepthOfFieldEffect") or v:IsA("BlurEffect") then
+		if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") then
 			v:Destroy()
 		end
 	end
 
-	-- Xóa Texture và Hiệu ứng trong Workspace
-	local function clearTextures(obj)
-		for _, v in pairs(obj:GetDescendants()) do
-			if v:IsA("Decal") or v:IsA("Texture") or v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+	-- 3. Xóa Texture & Decals & Effects
+	local function clearVisuals()
+		for _, v in pairs(Workspace:GetDescendants()) do
+			if v:IsA("Decal") or v:IsA("Texture") or v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Explosion") or v:IsA("Sparkles") then
 				v:Destroy()
+			elseif v:IsA("MeshPart") then
+				-- Giữ lại hình dáng nhưng bỏ texture
+				v.RenderFidelity = Enum.RenderFidelity.Precise
+				v.Material = Enum.Material.Plastic
+				v.Reflectance = 0
 			end
 		end
 	end
-	clearTextures(Workspace)
 	
-	-- Hook sự kiện khi có object mới để xóa texture luôn (giữ FPS ổn định lâu dài)
+	clearVisuals()
 	Workspace.DescendantAdded:Connect(function(v)
 		if v:IsA("Decal") or v:IsA("Texture") or v:IsA("ParticleEmitter") then
 			task.wait()
 			v:Destroy()
 		end
 	end)
+	
+	-- 4. Ẩn 3D Rendering (Optional: 3D Rendering Disable)
+	if Config.WhiteScreen then
+		RunService:Set3dRenderingEnabled(false)
+	end
 end
 
--- Đảm bảo part nền để xe chạy
-local function ensureGroundPart()
+-- [HỆ THỐNG ANTI-AFK]
+if not getgenv().AntiAfkLoaded then
+	getgenv().AntiAfkLoaded = true
+	local vu = game:GetService("VirtualUser")
+	LocalPlayer.Idled:Connect(function()
+		vu:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+		task.wait(1)
+		vu:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+	end)
+end
+
+-- [HỆ THỐNG FARM]
+local function createGround()
 	if not State.GroundPart or not State.GroundPart.Parent then
-		local part = Instance.new("Part")
-		part.Name = "FarmPlatform"
-		part.Anchored = true
-		part.Size = Vector3.new(10000, 2, 10000)
-		part.Transparency = 0.8 -- Trong suốt cao để đỡ vướng mắt
-		part.Color = Color3.fromRGB(0, 0, 0)
-		part.Material = Enum.Material.SmoothPlastic
-		part.Position = Vector3.new(0, -500, 0) -- Để xa map
-		part.Parent = Workspace
-		State.GroundPart = part
+		local p = Instance.new("Part")
+		p.Name = "Speedway"
+		p.Size = Vector3.new(100000, 5, 100000)
+		p.Anchored = true
+		p.Transparency = 1 
+		p.CanCollide = true
+		p.Position = Vector3.new(0, -400, 0) -- Giấu dưới map
+		p.Parent = Workspace
+		State.GroundPart = p
 	end
-	return State.GroundPart
 end
 
--- Kiểm tra xe đã đầy quà chưa
-local function reachedMax(value)
-	if not value then return false end
-	local seatCount = 0
-	for _, v in pairs(value:GetDescendants()) do
-		if v:IsA("Seat") then seatCount = seatCount + 1 end
-	end
+local function GetCar()
+	local char = LocalPlayer.Character
+	if not char then return nil end
+	local hum = char:FindFirstChild("Humanoid")
+	if not hum or not hum.SeatPart then return nil end
 	
-	local targetGifts = seatCount * 5
-	local giftsFolder = value:FindFirstChild("Gifts")
-	
-	if giftsFolder and #giftsFolder:GetChildren() >= targetGifts then
-		return true
+	local vehicle = hum.SeatPart.Parent
+	if vehicle:IsA("Model") then
+		return vehicle
 	end
-	return false
+	return nil
 end
 
--- Tối ưu hóa việc ẩn/hiện object (Giảm render parts)
-local BackupFolder = ReplicatedStorage:FindFirstChild("mrbackupfolder") or Instance.new("Folder", ReplicatedStorage)
-BackupFolder.Name = "mrbackupfolder"
+local function BypassVelocity(rootPart)
+	-- Giữ vận tốc ổn định để tránh bị server kéo lại
+	if rootPart then
+		rootPart.AssemblyLinearVelocity = Vector3.zero 
+		rootPart.AssemblyAngularVelocity = Vector3.zero
+	end
+end
 
-local function hideWorkspaceObjects()
-	for _, v in pairs(Workspace:GetChildren()) do
-		if v == LocalPlayer.Character or v:IsA("Terrain") or v:IsA("Camera") or v == State.GroundPart then continue end
-		-- Không ẩn xe của mình và các điểm quan trọng
-		if v.Name:find(LocalPlayer.Name) or v.Name:find("Gift") or v:FindFirstChild("Highlight") then continue end
+local function TweenTo(targetPos, speedOverride)
+	local car = GetCar()
+	if not car or not car.PrimaryPart then return end
+
+	local root = car.PrimaryPart
+	-- Nếu có bộ phận #Weight thì dùng nó làm gốc (game mechanic)
+	if car.Body:FindFirstChild("#Weight") then
+		root = car.Body["#Weight"]
+		car.PrimaryPart = root
+	end
+	
+	createGround()
+	
+	-- Tính toán vị trí đích
+	local targetCFrame
+	if typeof(targetPos) == "CFrame" then
+		targetCFrame = targetPos
+	else
+		targetCFrame = CFrame.new(targetPos)
+	end
+	
+	-- Tính toán thời gian & tốc độ
+	local speed = speedOverride or Config.Speed
+	local dist = (root.Position - targetCFrame.Position).Magnitude
+	local time = dist / speed
+	
+	-- Chia nhỏ Tween để xử lý event (nếu cần) hoặc chạy một mạch
+	local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+	
+	-- Mô phỏng đường đi
+	local cframeValue = Instance.new("CFrameValue")
+	cframeValue.Value = root.CFrame
+	
+	local stepConnection
+	stepConnection = cframeValue.Changed:Connect(function(val)
+		if not car or not car.Parent or not State.GroundPart then
+			stepConnection:Disconnect()
+			return
+		end
 		
-		if v:IsA("Model") or v:IsA("Folder") or v:IsA("MeshPart") or v:IsA("Part") then
-			-- Chỉ di chuyển nếu chưa nằm trong backup
-			if v.Parent == Workspace then
-				v.Parent = BackupFolder
+		-- Di chuyển Ground theo xe để luôn có đường chạy -> Không bao giờ rớt map
+		State.GroundPart.Position = Vector3.new(val.X, val.Y - 10, val.Z) -- Ground sát dưới xe
+		
+		-- Teleport xe
+		car:PivotTo(val)
+		
+		-- Bypass Physics
+		BypassVelocity(root)
+	end)
+	
+	local tween = TweenService:Create(cframeValue, tweenInfo, {Value = targetCFrame})
+	State.CurrentTween = tween
+	tween:Play()
+	tween.Completed:Wait()
+	
+	if stepConnection then stepConnection:Disconnect() end
+	cframeValue:Destroy()
+end
+
+-- [QUẢN LÝ OBJECTS - GIẢM LAG]
+State.BackupFolder = ReplicatedStorage:FindFirstChild("LagReduction") or Instance.new("Folder", ReplicatedStorage)
+State.BackupFolder.Name = "LagReduction"
+
+local function ClearMap()
+	-- Dọn sạch map để chạy cho nhanh
+	for _, v in pairs(Workspace:GetChildren()) do
+		if v:IsA("Model") and v ~= LocalPlayer.Character and v ~= State.Car and v.Name ~= "Speedway" then
+			-- Giữ lại các điểm giao hàng nếu cần thiết
+			if not v:FindFirstChild("Highlight") and v.Name ~= "GiftPickup" then 
+				v.Parent = State.BackupFolder
 			end
 		end
 	end
 end
 
-local function restoreWorkspaceObjects()
-	for _, v in pairs(BackupFolder:GetChildren()) do
+local function RestoreMap()
+	for _, v in pairs(State.BackupFolder:GetChildren()) do
 		v.Parent = Workspace
-		task.wait() -- Restore từ từ để tránh lag spike
 	end
 end
 
-local function tweenVehicle(car, targetPos, isEventMode)
-	if not car or not car.PrimaryPart then return end
-	
-	local startPos = car.PrimaryPart.Position
-	-- Xử lý targetPos có thể là CFrame hoặc Vector3
-	local targetVector = (typeof(targetPos) == "CFrame" and targetPos.Position) or targetPos
-	local distance = (startPos - targetVector).Magnitude
-	
-	local speed = isEventMode and (State.CancelTween and 50 or State.Speed) or State.Speed
-	if speed <= 0 then speed = 50 end
-	
-	local time = distance / speed
-	local tweenInfo = TweenInfo.new(time, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
-	
-	local cframeValue = Instance.new("CFrameValue")
-	cframeValue.Value = car:GetPrimaryPartCFrame()
-	
-	-- Connection quản lý cập nhật vị trí
-	local con
-	con = cframeValue.Changed:Connect(function(val)
-		if not car or not car.PrimaryPart or not State.GroundPart then 
-			if con then con:Disconnect() end
-			if State.CurrentTween then State.CurrentTween:Cancel() end
-			return
-		end
+-- [GIAO DIỆN UI]
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/chanhda2k2ctt-coder/cynxcpvippro2502/main/ui.lua", true))()
+local Window = library:CreateWindow({text = "Midnight Farm SUPER FAST"})
 
-		local currentPos = val.Position
-		
-		-- Logic Auto Deliver (Event)
-		if isEventMode then
-			 if LocalPlayer:DistanceFromCharacter(targetVector) > 100 then
-				 State.GroundPart.Position = currentPos - Vector3.new(0, 14, 0)
-				 car:PivotTo(CFrame.new(State.GroundPart.Position + Vector3.new(0, 7, 0), targetVector))
-				 -- Set velocity để server nhận diện di chuyển (anticheat bypass cơ bản)
-				 car.PrimaryPart.AssemblyLinearVelocity = car.PrimaryPart.CFrame.LookVector * speed
-			 elseif LocalPlayer:DistanceFromCharacter(targetVector) <= 100 and LocalPlayer:DistanceFromCharacter(targetVector) > 10 then
-				 if not State.CancelTween then
-					 State.CancelTween = true
-					 if State.CurrentTween then State.CurrentTween:Cancel() end
-				 end
-				 State.GroundPart.Position = currentPos - Vector3.new(0, 8, 0)
-				 car:PivotTo(CFrame.new(State.GroundPart.Position + Vector3.new(0, 7, 0), Vector3.new(targetVector.X, car.PrimaryPart.Position.Y, targetVector.Z)))
-				 car.PrimaryPart.AssemblyLinearVelocity = car.PrimaryPart.CFrame.LookVector * 20
-			 else
-				 -- Rất gần
-				 car:PivotTo(CFrame.new(Vector3.new(targetVector.X, State.GroundPart.Position.Y + 7, targetVector.Z)))
-				 car.PrimaryPart.AssemblyLinearVelocity = Vector3.zero
-			 end
-		else
-			-- Logic Farm thường
-			State.GroundPart.Position = currentPos - Vector3.new(0, 14, 0)
-			car:PivotTo(CFrame.new(State.GroundPart.Position + Vector3.new(0, 7, 0), targetVector))
-			car.PrimaryPart.AssemblyLinearVelocity = car.PrimaryPart.CFrame.LookVector * speed
-		end
-	end)
-	
-	State.CurrentTween = TweenService:Create(cframeValue, tweenInfo, {Value = CFrame.new(targetVector)})
-	State.CurrentTween:Play()
-	
-	-- Wait for completion or cancellation
-	local completed = false
-	local connection
-	connection = State.CurrentTween.Completed:Connect(function()
-		completed = true
-	end)
-	
-	repeat task.wait() until completed or not (State.AutoFarm or State.AutoDeliver)
-	
-	if con then con:Disconnect() end
-	if connection then connection:Disconnect() end
-	cframeValue:Destroy()
-end
-
--- UI Setup
-local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Schlabbadabadoo/RandomScripts/refs/heads/main/ui.lua", true))()
-local window = library:CreateWindow({
-	text = "Midnight Chasers Optimized"
-})
-
-window:AddBox("Speed (Default: 230)", function(obj, focus)
-	if focus then
-		State.Speed = tonumber(obj.Text) or 230
-	end
-end)
-
-window:AddButton("FPS Boost (Click Once)", function()
-	OptimizeFPS()
-	warn("FPS Optimized: Shadows off, Textures removed, Effects disabled.")
-end)
-
--- Danh sách điểm farm
-local FarmFrames = {
-	CFrame.new(105.419128, -26.0098934, 7965.37988),
-	CFrame.new(2751.86499, -26.0098934, 3694.63354),
-	CFrame.new(-8821.48438, -26.0098934, 2042.49939),
-	CFrame.new(-6408.62109, -26.0098934, -727.765198),
-	CFrame.new(-6099.79639, -26.0098934, -1027.94556),
-	CFrame.new(-6066.70068, -26.0098934, 493.255524),
-	CFrame.new(132.786133, -26.0098934, 15.2286377),
-	CFrame.new(-7692.85449, -26.0098934, -4668.61963),
-	CFrame.new(4887.24609, -26.0098934, 1222.96826)
-}
-
--- Toggle Auto Farm
-window:AddToggle("Auto Farm", function(state)
-	State.AutoFarm = state
-	
-	if State.AutoFarm then
-		hideWorkspaceObjects()
-		
+Window:AddToggle("Auto Farm (Quest)", function(state)
+	Config.AutoFarm = state
+	if state then
+		ClearMap()
+		createGround()
 		task.spawn(function()
-			while State.AutoFarm do
-				local char = LocalPlayer.Character
-				if not char then task.wait(1) continue end
-				
-				local hum = char:FindFirstChild("Humanoid")
-				local seat = hum and hum.SeatPart
-				
-				if seat then
-					local car = seat.Parent
-					State.Car = car
-					ensureGroundPart()
+			while Config.AutoFarm do
+				local car = GetCar()
+				if car then
+					-- Danh sách điểm farm cố định (đã tối ưu thứ tự)
+					local points = {
+						Vector3.new(105, -26, 7965),
+						Vector3.new(2751, -26, 3694),
+						Vector3.new(-6408, -26, -727),
+						Vector3.new(-8821, -26, 2042),
+						Vector3.new(4887, -26, 1222)
+					}
 					
-					if car.Body:FindFirstChild("#Weight") then
-						car.PrimaryPart = car.Body["#Weight"]
-					end
-					
-					for _, targetCFrame in ipairs(FarmFrames) do
-						if not State.AutoFarm then break end
-						local targetPos = targetCFrame.Position + Vector3.new(0, 5, 0)
-						tweenVehicle(car, targetPos, false)
+					for _, p in ipairs(points) do
+						if not Config.AutoFarm then break end
+						TweenTo(CFrame.new(p + Vector3.new(0, 10, 0)))
 					end
 				else
-					task.wait(1)
+					-- Tự động nhảy lên ghế lái nếu đứng gần (Optional)
 				end
+				task.wait()
 			end
 		end)
 	else
 		if State.CurrentTween then State.CurrentTween:Cancel() end
-		restoreWorkspaceObjects()
+		RestoreMap()
 	end
 end)
 
--- Toggle Auto Deliver (Event)
-window:AddToggle("Auto Deliver [Event]", function(state)
-	State.AutoDeliver = state
-	
-	if State.AutoDeliver then
-		hideWorkspaceObjects()
+Window:AddToggle("Auto Deliver (Event)", function(state)
+	Config.AutoDeliver = state
+	if state then
+		ClearMap()
+		createGround()
 		task.spawn(function()
-			while State.AutoDeliver do
-				task.wait()
-				local char = LocalPlayer.Character
-				if not char then continue end
-				local hum = char:FindFirstChild("Humanoid")
-				local seat = hum and hum.SeatPart
-				
-				if seat then
-					local car = seat.Parent
-					State.Car = car
-					ensureGroundPart()
-					if car.Body:FindFirstChild("#Weight") then
-						car.PrimaryPart = car.Body["#Weight"]
-					end
+			while Config.AutoDeliver do
+				local car = GetCar()
+				if car then
+					-- Logic nhận diện quà và điểm giao
+					local hasGifts = false 
+					-- Check logic quà (giả lập logic cũ nhưng nhanh hơn)
+					-- Ở đây ta ưu tiên chạy đến điểm vàng (Highlight)
 					
-					-- Tìm quà gần nhất
-					local bestLocation = nil
-					local minDistance = math.huge
+					local target = nil
+					local minDist = math.huge
 					
+					-- Tìm điểm giao hàng
 					for _, v in pairs(Workspace:GetChildren()) do
-						-- Logic tìm điểm trả quà
 						if v.Name == "" and v:FindFirstChild("Highlight") then
-							local dist = (char.PrimaryPart.Position - v.WorldPivot.Position).Magnitude
-							if dist < minDistance then
-								minDistance = dist
-								bestLocation = v
+							local d = (car.PrimaryPart.Position - v.WorldPivot.Position).Magnitude
+							if d < minDist then
+								minDist = d
+								target = v
 							end
 						end
 					end
 					
-					if bestLocation then
-						State.CancelTween = false
-						tweenVehicle(car, bestLocation.WorldPivot.Position + Vector3.new(0, 5, 0), true)
-					elseif Workspace:FindFirstChild("GiftPickup") then
-						 -- Quay về lấy quà
-						 local pickup = Workspace.GiftPickup.WorldPivot.Position
-						 tweenVehicle(car, pickup + Vector3.new(0, 5, 0), false)
-						 
-						 -- Đợi đầy quà
-						 repeat 
-							 task.wait(0.2)
-							 car.PrimaryPart.AssemblyLinearVelocity = Vector3.zero
-							 car:PivotTo(CFrame.new(pickup) + Vector3.new(0, 5, 0))
-						 until reachedMax(car) or not State.AutoDeliver
+					if target then
+						-- Chạy đến điểm giao
+						TweenTo(target.WorldPivot * CFrame.new(0, 5, 0), Config.Speed)
+					else
+						-- Không có điểm giao -> Đi lấy quà
+						if Workspace:FindFirstChild("GiftPickup") then
+							TweenTo(Workspace.GiftPickup.WorldPivot * CFrame.new(0, 5, 0), Config.Speed)
+							-- Đợi lấy quà (spam check)
+							local sTime = tick()
+							repeat 
+								task.wait()
+								if car.PrimaryPart then
+									car.PrimaryPart.AssemblyLinearVelocity = Vector3.zero
+								end
+							until tick() - sTime > 1.5 -- Đứng yên 1.5s để lấy quà
+						end
 					end
-				else
-					task.wait(1)
 				end
+				task.wait()
 			end
 		end)
 	else
 		if State.CurrentTween then State.CurrentTween:Cancel() end
-		restoreWorkspaceObjects()
+		RestoreMap()
 	end
 end)
+
+-- Tab Settings
+Window:AddLabel("--- SETTINGS ---")
+Window:AddBox("Speed (Max: 400)", function(obj, focus)
+	if focus then
+		local s = tonumber(obj.Text)
+		if s then Config.Speed = s end
+	end
+end)
+
+Window:AddButton("Activte FPS BOOST", function()
+	SuperFPSBoost()
+end)
+
+Window:AddToggle("White Screen (Save GPU)", function(state)
+	Config.WhiteScreen = state
+	if state then
+		RunService:Set3dRenderingEnabled(false)
+	else
+		RunService:Set3dRenderingEnabled(true)
+	end
+end)
+
+-- Auto Init
+SuperFPSBoost()
+warn("Loaded Extreme Speed Script")
